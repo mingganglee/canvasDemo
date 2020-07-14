@@ -1,0 +1,51 @@
+<html>
+    <head>
+        <link href="https://unpkg.com/video.js/dist/video-js.css" rel="stylesheet">
+        <script src="https://unpkg.com/video.js/dist/video.js"></script>
+        <script src="https://unpkg.com/videojs-contrib-hls/dist/videojs-contrib-hls.js"></script>
+    </head>
+    <body>
+
+        <video id="my_video_1" class="video-js vjs-default-skin" muted autoplay="autoplay" width="300" height="300" 
+            data-setup='{}'>
+            <source src="http://192.168.1.153/hls/playlist.m3u8" type="application/x-mpegURL">
+        </video>
+    </body>
+    <script>
+        // //视频播放
+        // var myPlayer = videojs('#my_video_1',{
+        //     bigPlayButton : true,
+        //     textTrackDisplay : true,
+        //     posterImage: true,
+        //     errorDisplay : true,
+        //     controlBar : true
+        // },function(){
+        //     //ready 加载
+        // //                        console.log(this)
+        //     var _that = this;
+        //     this.on('loadedmetadata',function(){
+        //     })
+        //     this.on('ended',function(){
+        //     })
+        //     this.on('firstplay',function(){
+        //     })
+        //     this.on('loadstart',function(){
+        //         //开始加载
+        //     })
+        //     this.on('loadeddata',function(){
+        //     })
+        //     this.on('seeking',function(){
+        //         //正在去拿视频流的路上
+        //     })
+        //     this.on('seeked',function(){
+        //         //已经拿到视频流,可以播放
+        //     })
+        //     this.on('waiting',function(){
+        //     })
+        //     this.on('pause',function(){
+        //     })
+        //     this.on('play',function(){
+        //     })
+        // });
+    </script>
+</html>

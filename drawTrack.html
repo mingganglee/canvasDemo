@@ -1,0 +1,237 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<title>测试strokeStyle</title>
+</head>
+<body>
+  <canvas id="canvas" width="300" height="300" style="border: 1px solid red;"></canvas>
+  <input type="button" value="resizeCanvas920" onclick="resizeCanvas(920)" />
+  <input type="button" value="resizeCanvas300" onclick="resizeCanvas(300)" />
+</canvas>
+<script>
+
+class drawGauges {
+  constructor(canvas) {
+    this.initGauges(canvas)
+  }
+
+  initGauges(canvas) {
+    this.canvas = canvas
+    this.ctx = this.canvas.getContext('2d');
+
+    this.initParams()
+    
+  }
+
+  initParams() {
+    this.moveX = this.canvas.width
+    this.moveY = 10
+
+    this.maxScale = 80 // 刻度总大小
+    this.oneScaleNum = 5 // 每个刻度值间隔
+    this.scaleWidth = 10 // 刻度宽度
+    this.scaleNum = (this.maxScale / this.oneScaleNum) + 1
+    this.scaleSpace = (this.canvas.height - 5) / this.scaleNum
+    this.textScaleSpace = 4 // 多少个刻度显示一个值
+    this.textNum = parseInt((this.maxScale / this.oneScaleNum) / this.textScaleSpace + 1)
+    this.textDefaultX = this.canvas.width - 25
+
+
+    this.rectWidth = 10
+    this.rectHeight = 10
+
+    this.defaultWidth = this.canvas.width
+
+    this.sumTime = 0
+    this.timeBarWidth = 3
+    this.oneTimeBarNum = 30
+    this.timeBarPosition = 0
+
+
+    this.tracks = [
+        // {time: 3, deep: 30},
+        // {time: 5, deep: 80},
+        // {time: 12, deep: 40},
+        // {time: 35, deep: 30},
+        // {time: 78, deep: 130},
+        // {time: 83, deep: 30},
+        // {time: 90, deep: 230},
+    ]
+  }
+
+  drawTimeAxis() {
+    this.timeBarPosition = 0
+    this.ctx.save();
+    this.ctx.beginPath();
+    for (let i = 0; i < parseInt(this.sumTime / this.oneTimeBarNum); i++) {
+        // const element = array[i];
+        if ((i + 1) % 2 == 1){
+            this.ctx.fillStyle="red";
+        } else {
+            this.ctx.fillStyle="grey";
+        }
+        this.ctx.fillRect(this.timeBarPosition + this.defaultWidth,0,this.timeBarWidth * this.oneTimeBarNum,10);
+        this.timeBarPosition += this.timeBarWidth * this.oneTimeBarNum
+    }
+
+    if (parseInt(this.sumTime / this.oneTimeBarNum) % 2 == 0){
+        this.ctx.fillStyle="red";
+    } else {
+        this.ctx.fillStyle="grey";
+    }
+    this.ctx.fillRect(this.timeBarPosition + this.defaultWidth,0,this.timeBarWidth * (this.sumTime % this.oneTimeBarNum),10);
+    this.timeBarPosition += this.timeBarWidth * this.oneTimeBarNum
+    
+    this.ctx.closePath();
+    this.ctx.restore();
+  }
+
+  getTrackPosition(time) {
+    return time * this.timeBarWidth
+  }
+
+  drawRect() {
+    this.ctx.save();
+    this.ctx.beginPath();
+    for (let i = 0; i < this.tracks.length; i++) {
+        const item = this.tracks[i];
+        this.ctx.font="16px Arial";
+        this.ctx.textAlign = 'left';
+        this.ctx.textBaseline = 'bottom';
+        this.ctx.fillText(i+1, this.getTrackPosition(item.time) + this.defaultWidth, item.deep);
+        this.ctx.strokeRect(this.getTrackPosition(item.time) + this.defaultWidth, item.deep, this.rectWidth,this.rectHeight);   
+    }
+    this.ctx.closePath();
+    this.ctx.restore();
+  }
+
+  drawColorMap(){
+    this.ctx.save();
+    this.ctx.beginPath();
+
+    let color_map_width = 20;
+    let color_map_height = 130;
+    let color_map_left = 10;
+    let color_map_top = 10
+
+    // 绘制彩色块
+    this.ctx.rect(color_map_left + 1, color_map_top + 1, color_map_width, color_map_height);
+    var grd1 = this.ctx.createLinearGradient(0, 0, 0, color_map_height);
+
+    grd1.addColorStop(0, 'DarkRed'); // 设置顶部颜色
+    grd1.addColorStop(0.25, 'OrangeRed'); // 设置顶部颜色
+    grd1.addColorStop(0.4, 'yellow'); // 设置中间颜色
+    grd1.addColorStop(0.7, 'Cyan'); // 设置底部颜色
+    grd1.addColorStop(1, 'DarkBlue'); // 设置底部颜色
+    this.ctx.fillStyle = grd1;
+    this.ctx.fill();
+
+    //绘制边框
+    this.ctx.beginPath();
+    this.ctx.lineWidth="2";
+    this.ctx.strokeStyle="white";
+    this.ctx.rect(color_map_left, color_map_top , color_map_width + 2, color_map_height + 2);
+    this.ctx.stroke();
+
+    this.ctx.closePath();
+    this.ctx.restore();
+  }
+
+  getSpace(number) {
+    return this.scaleSpace * number + this.moveY
+  }
+
+  drawTexts() {
+    this.ctx.save();
+    this.ctx.beginPath();
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    for (var i=0;i<this.textNum;i++) {
+      var value = i * (this.oneScaleNum * this.textScaleSpace)
+      this.ctx.font="16px Arial";
+      this.ctx.fillStyle = this.textColor;
+      this.ctx.fillText(value, this.textDefaultX, this.getSpace(i*this.textScaleSpace) );
+    }
+    this.ctx.closePath();
+    this.ctx.restore();
+  }
+
+  drawScale() {
+    this.ctx.save();
+    this.ctx.beginPath();
+    this.ctx.lineWidth = 2;
+    // this.ctx.stroke();
+    for (var i=0;i<this.scaleNum;i++){
+      var toX = this.canvas.width - this.scaleWidth
+      var toY = this.getSpace(i)
+      this.ctx.beginPath();
+      this.ctx.strokeStyle = this.scaleColor;
+      this.ctx.moveTo(this.canvas.width, toY);
+      this.ctx.lineTo(toX, toY);
+      this.ctx.stroke();
+    }
+    this.ctx.closePath();
+    this.ctx.restore();
+  }
+
+
+  draw() {
+    this.ctx.clearRect(-this.canvas.width,-this.canvas.height, this.canvas.width*2, this.canvas.height *2);
+    this.drawTimeAxis()
+    this.drawRect()
+    this.drawColorMap()
+    this.drawScale()
+    this.drawTexts()
+    // this.drawRect(120, 20, '2')
+    // this.drawRect(260, 60, '3')
+    // this.drawRect(280, 80, '4')
+    this.defaultWidth -= 0.1
+
+    if (this.defaultWidth == -500) {
+        this.defaultWidth = 300
+    }
+    window.requestAnimationFrame(this.draw.bind(this));
+  }
+
+  resizeDraw() {
+    this.initParams()
+    this.ctx.clearRect(-this.canvas.width,-this.canvas.height, this.canvas.width*2, this.canvas.height *2);
+    this.drawTimeAxis()
+    this.drawRect()
+    this.drawColorMap()
+    this.drawScale()
+    this.drawTexts()
+  }
+
+  addSumTime(time) {
+      this.sumTime += time
+  }
+
+  addTrack(time, deep) {
+    this.tracks.push({time: time, deep: deep})
+  }
+}
+
+var canvas = document.getElementById('canvas');
+var gauges = new drawGauges(canvas)
+gauges.draw();
+var num = 0;
+setInterval(function(){
+  num += 4;
+  gauges.addSumTime(4)
+  if (num % 8 == 0) {
+    time = parseInt(Math.random()*num,10)+1;
+    deep = parseInt(Math.random()*300,10)+1;
+    gauges.addTrack(time, deep)
+  }
+},1000);
+
+function resizeCanvas(width) {
+  console.log('resizeCanvas', width)
+  var canvas = document.getElementById('canvas');
+  canvas.width = width
+  gauges.resizeDraw()
+}
+</script>
+</body>
+</html>

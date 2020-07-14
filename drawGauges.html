@@ -1,0 +1,94 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<title>测试strokeStyle</title>
+</head>
+<body>
+  <canvas id="canvas" width="800" height="600" style="border: 1px solid #000;">
+</canvas>
+<script>
+class drawGauges {
+  constructor(canvas) {
+    this.initGauges(canvas)
+  }
+
+  initGauges(canvas) {
+    this.canvas = canvas
+    this.ctx = this.canvas.getContext('2d');
+    this.moveX = this.canvas.width
+    this.moveY = 10
+
+    this.maxScale = 80 // 刻度总大小
+    this.oneScaleNum = 5 // 每个刻度值间隔
+    this.scaleWidth = 10 // 刻度宽度
+    this.scaleNum = (this.maxScale / this.oneScaleNum) + 1
+    this.scaleSpace = (this.canvas.height - 5) / this.scaleNum
+    this.textScaleSpace = 1 // 多少个刻度显示一个值
+    this.textNum = parseInt((this.maxScale / this.oneScaleNum) / this.textScaleSpace + 1)
+    this.textDefaultX = this.canvas.width - 25
+    
+    console.log(this.scaleNum, this.textNum)
+  }
+
+  getSpace(number) {
+    return this.scaleSpace * number + this.moveY
+  }
+
+  drawTexts() {
+    this.ctx.save();
+    this.ctx.beginPath();
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    for (var i=0;i<this.textNum;i++) {
+      var value = i * (this.oneScaleNum * this.textScaleSpace)
+      this.ctx.font="16px Arial";
+      this.ctx.fillStyle = this.textColor;
+      this.ctx.fillText(value, this.textDefaultX, this.getSpace(i*this.textScaleSpace) );
+    }
+    this.ctx.closePath();
+    this.ctx.restore();
+  }
+
+  drawScale() {
+    this.ctx.save();
+    this.ctx.beginPath();
+    this.ctx.lineWidth = 2;
+    // this.ctx.stroke();
+    for (var i=0;i<this.scaleNum;i++){
+      var toX = this.canvas.width - this.scaleWidth
+      var toY = this.getSpace(i)
+      this.ctx.beginPath();
+      this.ctx.strokeStyle = this.scaleColor;
+      this.ctx.moveTo(this.canvas.width, toY);
+      this.ctx.lineTo(toX, toY);
+      this.ctx.stroke();
+    }
+    this.ctx.closePath();
+    this.ctx.restore();
+  }
+
+  draw() {
+    this.ctx.clearRect(-this.canvas.width,-this.canvas.height, this.canvas.width*2, this.canvas.height *2);
+    this.drawScale()
+    this.drawTexts()
+
+    this.cxt.drawImage(this.canvas,-30,0);
+    
+    // window.requestAnimationFrame(this.draw.bind(this));
+  }
+}
+
+
+var canvas = document.getElementById('canvas');
+var gauges = new drawGauges(canvas)
+gauges.draw();
+
+
+// var num = 0;
+// setInterval(function(){
+//   num += 10;
+//   gauges.updateAngle(num)
+// },1000);
+</script>
+</body>
+</html>

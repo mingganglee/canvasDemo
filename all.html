@@ -1,0 +1,410 @@
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+        <title>测试strokeStyle</title>
+    </head>
+    <style type="text/css">
+    	.canvas_container{
+    		width: 1000px;
+    		height: 640px;
+    		border: 1px solid #000;
+    		padding: 10px;
+    		overflow: hidden;
+    		overflow-y: auto;
+    		display: inline-block;
+    	}
+    	.canvas_item{
+    		border: 1px solid #333;
+    		margin-right: 10px;
+    		margin-top: 10px;
+    	}
+    </style>
+<body>
+<div class="canvas_container"></div>
+<input type="button" id='add_canvas' value="add canvas"/>&emsp;
+<input type="button" id='remove_canvas' value="remove canvas"/>&emsp;
+
+<script type="text/javascript">
+    var container = document.getElementsByClassName('canvas_container')[0];
+    var row_width = 920;
+    var one_width = 300;
+    var one_height = 300;
+	  var bottomScanList = [];
+
+    function resize_canvas_width(canvas_dom, width){
+		  bottomScanList[0].resizeDraw();
+    }
+
+    function modify_first_canvas_width(width){
+    	var first_canvas = container.getElementsByClassName('canvas_item')[0];
+      if (first_canvas.width !== width) {
+        first_canvas.width = width;
+        resize_canvas_width(first_canvas, width);
+      }
+    }
+
+    function get_canvas_item_cnt(){
+    	var canvas_item = container.getElementsByClassName('canvas_item');
+      console.log(canvas_item)
+    	return canvas_item.length;
+    }
+
+
+    function create_canvas_dom(canvas_name=''){
+    	if(document.getElementById('canvas_item_' + canvas_name)){
+    		return false;
+    	}
+    	// 获取canvas对象数量
+    	var canvas_item_cnt = get_canvas_item_cnt();
+    	var cnavas_width = 0;
+
+    	if(canvas_item_cnt < 1){
+    		cnavas_width = row_width;
+    	}else{
+    		cnavas_width = one_width;
+    		modify_first_canvas_width(one_width)
+    	}
+
+    	var dom = document.createElement('canvas');
+    	dom.setAttribute('class', 'canvas_item');
+    	dom.setAttribute('id', 'canvas_item_' + canvas_name);
+    	dom.width = cnavas_width;
+    	dom.height = one_height;
+    	var context = dom.getContext("2d");
+      var bottomScan = new drawBottomScan(dom);
+      bottomScan.draw();
+      bottomScanList.push(bottomScan);
+      bottomScanList[0].showBottomDepth();
+    	container.appendChild(dom);
+    }
+
+    function remove_canvas_dom(canvas_name=''){
+    	if(!document.getElementById('canvas_item_' + canvas_name)){
+    		return false;
+    	}
+      bottomScanList[0].removeDraw();
+      bottomScanList.shift();
+    	container.removeChild(document.getElementById('canvas_item_' + canvas_name));
+
+    	var canvas_item_cnt = get_canvas_item_cnt();
+    	if(canvas_item_cnt == 1){
+    		modify_first_canvas_width(row_width);
+    	}
+
+      if (canvas_item_cnt > 0) {
+        bottomScanList[0].showBottomDepth();
+      }
+    }
+
+    class drawBottomScan {
+  constructor(canvas) {
+    this.initdrawBottomScan(canvas);
+  }
+
+  initdrawBottomScan(canvas) {
+    this.canvas = canvas;
+    this.ctx = this.canvas.getContext('2d');
+
+    this.initParams();
+    this.setDefaultMoveWidth();
+  }
+
+  initParams() {
+    // 核心参数
+    this.raf; // 记录 animation id
+    this.defaultMoveHeighe = 10; // 默认移动高度(x)
+    this.defaultMoveWidth = 0; // 默认移动宽度(y)
+    this.oldCanvasWidth = 0; // 老的 canvas 宽度
+
+    // 刻度与刻度值
+    this.maxScale = 80; // 刻度总大小
+    this.oneScaleNum = 5; // 每个刻度值间隔
+    this.scaleWidth = 10; // 刻度宽度
+    this.scaleNum = (this.maxScale / this.oneScaleNum) + 1; // 刻度显示个数
+    this.scaleSpace = (this.canvas.height - 5) / this.scaleNum; // 每个刻度之间的间隙
+    this.scaleTextSpace = 4; // 多少个刻度显示一个值
+    this.scaleTextNum = parseInt((this.maxScale / this.oneScaleNum) / this.scaleTextSpace + 1); // 一共显示多少个值
+    this.scaleTextDefaultWidth = 25; // 刻度文字显示位置补偿
+
+    // 时间部分
+    this.sumTime = 0; // 记录时间总秒数
+    this.oneSecondTimeBarWidth = 3; // 1秒bar占用宽度
+    this.oneTimeBarSecond = 30; // 一个bar占用总秒数
+    this.oneTimeBarWidth = this.oneSecondTimeBarWidth * this.oneTimeBarSecond; // 一个bar占用总宽度
+    this.timeBarPosition = 0; // 当前 bar 的位置
+
+    // 鱼群标记大小范围
+    this.rectWidth = 10; // 鱼群标记宽度
+    this.rectHeight = 10; // 鱼群标记高度
+    this.tracks = []; // 鱼群信息
+
+    // 左上角 左下角内容信息
+    this.bottomDepthStatus = false; // 是否显示左下角参数
+    this.bottomDepth = ''; // 左下角参数值
+    this.mode = ''; // 左上角模式
+    this.gain = ''; // 左上角增益
+  }
+
+  setDefaultMoveWidth() {
+    this.defaultMoveWidth = this.canvas.width - (this.oldCanvasWidth - this.defaultMoveWidth);
+    this.oldCanvasWidth = this.canvas.width;
+  }
+
+  drawTimeAxis() {
+    this.timeBarPosition = 0;
+    var barNubmer = parseInt(this.sumTime / this.oneTimeBarSecond);
+    this.ctx.save();
+    this.ctx.beginPath();
+    for (let i = 0; i < barNubmer; i++) {
+        if ((i + 1) % 2 == 1){
+            this.ctx.fillStyle="red";
+        } else {
+            this.ctx.fillStyle="grey";
+        }
+        this.ctx.fillRect(this.timeBarPosition + this.defaultMoveWidth, 0 , this.oneTimeBarWidth, 10);
+        this.timeBarPosition += this.oneTimeBarWidth;
+    }
+
+    if (barNubmer % 2 == 0){
+        this.ctx.fillStyle="red";
+    } else {
+        this.ctx.fillStyle="grey";
+    }
+    this.ctx.fillRect(this.timeBarPosition + this.defaultMoveWidth,0, this.oneSecondTimeBarWidth * (this.sumTime % this.oneTimeBarSecond),10);
+    this.timeBarPosition += this.oneSecondTimeBarWidth * (this.sumTime % this.oneTimeBarSecond);
+    
+    this.ctx.closePath();
+    this.ctx.restore();
+  }
+
+  getTrackPosition(time) {
+    return time * this.oneSecondTimeBarWidth;
+  }
+
+  getRectHeight(depth) {
+    return (this.scaleSpace / this.oneScaleNum) * depth + this.defaultMoveHeighe;
+  }
+
+  drawRect() {
+    this.ctx.save();
+    this.ctx.beginPath();
+    for (let i = 0; i < this.tracks.length; i++) {
+      const item = this.tracks[i];
+      this.ctx.font="16px Arial";
+      this.ctx.textAlign = 'left';
+      this.ctx.textBaseline = 'bottom';
+      this.ctx.fillText(i+1, this.getTrackPosition(item.time) + this.defaultMoveWidth - this.rectWidth / 2, this.getRectHeight(item.deep) - this.rectHeight / 2);
+      this.ctx.strokeRect(this.getTrackPosition(item.time) + this.defaultMoveWidth - this.rectWidth / 2, this.getRectHeight(item.deep) - this.rectHeight / 2, this.rectWidth,this.rectHeight);
+    }
+    this.ctx.closePath();
+    this.ctx.restore();
+  }
+
+  drawColorMap(){
+    this.ctx.save();
+    this.ctx.beginPath();
+
+    let color_map_width = 10;
+    let color_map_height = 160;
+    let color_map_left = 3;
+    let color_map_top = 50;
+
+    // 绘制彩色块
+    this.ctx.translate(color_map_left, color_map_top);
+    this.ctx.rect(0, 0, color_map_width, color_map_height);
+    var grd1 = this.ctx.createLinearGradient(0, 0, 0, color_map_height);
+
+    grd1.addColorStop(0, 'DarkRed'); // 设置顶部颜色
+    grd1.addColorStop(0.25, 'OrangeRed'); // 设置顶部颜色
+    grd1.addColorStop(0.4, 'yellow'); // 设置中间颜色
+    grd1.addColorStop(0.7, 'Cyan'); // 设置底部颜色
+    grd1.addColorStop(1, 'DarkBlue'); // 设置底部颜色
+    this.ctx.fillStyle = grd1;
+    this.ctx.fill();
+
+    this.ctx.translate(0, 0); // 将偏移 x,y 还原
+    this.ctx.closePath();
+    this.ctx.restore();
+  }
+
+  getSpace(number) {
+    return this.scaleSpace * number + this.defaultMoveHeighe;
+  }
+
+  drawTexts() {
+    this.ctx.save();
+    this.ctx.beginPath();
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    for (var i=0;i<this.scaleTextNum;i++) {
+      var value = i * (this.oneScaleNum * this.scaleTextSpace);
+      this.ctx.font="16px Arial";
+      this.ctx.fillStyle = this.textColor;
+      this.ctx.fillText(value, this.canvas.width - this.scaleTextDefaultWidth, this.getSpace(i*this.scaleTextSpace) );
+    }
+    this.ctx.closePath();
+    this.ctx.restore();
+  }
+
+  drawScale() {
+    this.ctx.save();
+    this.ctx.beginPath();
+    this.ctx.lineWidth = 2;
+    // this.ctx.stroke();
+    for (var i=0;i<this.scaleNum;i++){
+      var toX = this.canvas.width - this.scaleWidth;
+      var toY = this.getSpace(i);
+      this.ctx.beginPath();
+      this.ctx.strokeStyle = this.scaleColor;
+      this.ctx.moveTo(this.canvas.width, toY);
+      this.ctx.lineTo(toX, toY);
+      this.ctx.stroke();
+    }
+    this.ctx.closePath();
+    this.ctx.restore();
+  }
+
+  drawLeftTopText() {
+    if (this.mode === '' && this.gain === '') {
+      return;
+    }
+    this.ctx.save();
+    this.ctx.beginPath();
+    this.ctx.textAlign = 'left';
+    this.ctx.textBaseline = 'middle';
+    this.ctx.font="16px Arial";
+    this.ctx.fillStyle = this.textColor;
+    this.ctx.fillText(this.mode + ': ' + this.gain, 12, 25);
+    this.ctx.closePath();
+
+    this.ctx.beginPath();
+    this.ctx.strokeRect(5, 10, 70,25);
+    this.ctx.stroke();
+    this.ctx.closePath();
+    this.ctx.restore();
+  }
+
+  drawLeftBottomText() {
+    if (this.bottomDepthStatus === false || this.bottomDepth === '') {
+      return;
+    }
+    this.ctx.save();
+    this.ctx.beginPath();
+    this.ctx.textAlign = 'right';
+    this.ctx.textBaseline = 'alphabetic';
+    this.ctx.font="800 30px Arial";
+    this.ctx.fillStyle = this.textColor;
+    this.ctx.fillText(this.bottomDepth, 80, 270);
+
+    this.ctx.font="600 14px Arial";
+    this.ctx.fillText('米', 100, 270);
+    this.ctx.closePath();
+    this.ctx.restore();
+  }
+
+  draw() {
+    this.ctx.clearRect(-this.canvas.width,-this.canvas.height, this.canvas.width*2, this.canvas.height *2);
+    this.drawTimeAxis();
+    this.drawRect();
+    this.drawColorMap();
+    this.drawScale();
+    this.drawTexts();
+    this.drawLeftTopText();
+    this.drawLeftBottomText();
+
+    this.defaultMoveWidth -= 0.1;
+    if (this.defaultMoveWidth == -500) {
+        this.defaultMoveWidth = this.canvas.width;
+    }
+    this.raf = window.requestAnimationFrame(this.draw.bind(this));
+  }
+
+  removeDraw() {
+    window.cancelAnimationFrame(this.raf);
+  }
+
+  resizeDraw() {
+    this.setDefaultMoveWidth();
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.drawTimeAxis();
+    this.drawRect();
+    this.drawColorMap();
+    this.drawScale();
+    this.drawTexts();
+    this.drawLeftTopText();
+    this.drawLeftBottomText();
+  }
+
+  addSumTime(time) {
+      this.sumTime += time;
+  }
+
+  addTrack(time, deep) {
+    this.tracks.push({time: time, deep: deep});
+  }
+
+  showBottomDepth() {
+    this.bottomDepthStatus = true;
+  }
+
+  updateBottomDepth(bottomDepth) {
+    this.bottomDepth = bottomDepth.toFixed(1);
+  }
+
+  updateMode(mode) {
+    this.mode = mode;
+  }
+
+  updateGain(gain) {
+    this.gain = gain.toFixed(1);
+  }
+}
+
+    var num = 0;
+    setInterval(function(){
+      num += 4;
+      for (var k in bottomScanList) {
+        var bottomScan = bottomScanList[k];
+        bottomScan.addSumTime(4);
+        if (num % 8 == 0) {
+          time = parseInt(Math.random()*num,10)+1;
+          deep = parseInt(Math.random()*300,10)+1;
+          bottomScan.addTrack(time, deep);
+        }
+
+        mode = 'LF'
+        gain = parseFloat(Math.random()*99,10)+1;
+        bottomDepth = parseFloat(Math.random()*999,10)+1;
+
+        bottomScan.updateMode(mode)
+        bottomScan.updateGain(gain)
+        bottomScan.updateBottomDepth(bottomDepth)
+      }
+      
+    },1000);
+</script>
+<script type="text/javascript">
+	function randomString(len) {
+		len = len || 32;
+		var $chars = 'ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678';    /****默认去掉了容易混淆的字符oOLl,9gq,Vv,Uu,I1****/
+		var maxPos = $chars.length;
+		var pwd = '';
+		for (i = 0; i < len; i++) {
+		　　pwd += $chars.charAt(Math.floor(Math.random() * maxPos));
+		}
+		return pwd;
+	}
+
+	document.getElementById('add_canvas').addEventListener('click', function(){
+		create_canvas_dom("HF_"+randomString(5))
+	})
+
+	document.getElementById('remove_canvas').addEventListener('click', function(){
+		var canvas_list = document.getElementsByClassName('canvas_item');
+		if(canvas_list.length > 0){
+			remove_canvas_dom(canvas_list[0].getAttribute('id').replace('canvas_item_', ''));
+		}
+	})
+</script>
+</body>
+</html>

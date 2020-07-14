@@ -1,0 +1,36 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<title>测试strokeStyle</title>
+</head>
+<body>
+  <canvas id="canvas" width="800" height="600" style="border: 1px solid #000; background: #333;">
+</canvas>
+<script>
+    var canvas = document.getElementById("canvas");
+    var context = canvas.getContext("2d");
+ 
+        let color_map_width = 50;
+        let color_map_height = 500;
+        let color_map_left = 10;
+        let color_map_top = 10
+
+        // 绘制彩色块
+        context.rect(color_map_left + 1, color_map_top + 1, color_map_width, color_map_height);
+        var grd1 = context.createLinearGradient(0, 0, 0, color_map_height);
+        
+        grd1.addColorStop(0, 'red'); // 设置顶部颜色
+        grd1.addColorStop(0.5, 'yellow'); // 设置中间颜色
+        grd1.addColorStop(1, 'blue'); // 设置底部颜色
+        context.fillStyle = grd1;
+        context.fill();
+
+        //绘制边框
+        context.beginPath();
+        context.lineWidth="2";
+        context.strokeStyle="white";
+        context.rect(color_map_left, color_map_top , color_map_width + 2, color_map_height + 2);
+        context.stroke();
+</script>
+</body>
+</html>

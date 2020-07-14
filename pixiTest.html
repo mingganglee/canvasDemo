@@ -1,0 +1,316 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Moving sprites</title>
+<style>
+  canvas{image-rendering: pixelated;}
+</style>
+<body>
+  <div>
+    <div id="firstCanvas">
+
+    </div>
+    <div id="twoCanvas" style="display: none;">
+    <!-- <div id="twoCanvas"> -->
+      <!-- <canvas class="can" id="c1" width="100" height="300"></canvas>
+      <canvas class="can" id="c2" width="100" height="300"></canvas>
+      <canvas class="can" id="c3" width="100" height="300"></canvas> -->
+    </div>
+  </div>
+  
+
+<script src="/js/pixi.min.js"></script>
+<script src="/js/socket.io.js"></script>
+<script>
+
+  let useBackIndex = 0
+  let canvasWidth = 306;
+  let canvasHeight = 300;
+  let drawCanvasWidth = 0;
+  let oneImageWidth = 3;
+
+  function createCanvas() {
+    var canvas = document.createElement("canvas");
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+    document.getElementById('twoCanvas').appendChild(canvas);
+    return canvas.getContext('2d');
+  }
+
+  function removeCanvas() {
+    let container = document.getElementById('twoCanvas');
+    container.removeChild(container.children[0]);
+  }
+
+  function getCanvasImage() {
+    let container = document.getElementById('twoCanvas');
+    container = container.children;
+
+    var canvas = document.createElement("canvas");
+    canvas.width = canvasWidth * 3;
+    canvas.height = canvasHeight;
+    canvas.getContext('2d').drawImage(container[0], 0, 0);
+    canvas.getContext('2d').drawImage(container[1], canvasWidth, 0);
+    canvas.getContext('2d').drawImage(container[2], canvasWidth * 2, 0);
+    return canvas.toDataURL()
+  }
+
+  let backList = [createCanvas(), createCanvas(), createCanvas()]
+
+  function drawBack(imageArray) {
+    let imageBlob = new Blob([imageArray], {type: 'image/jpeg'});
+    let imageUrl = URL.createObjectURL(imageBlob)
+    let image = new Image()
+    image.src = imageUrl
+    
+    image.onload = function() {
+      let item = backList[useBackIndex]
+
+      item.drawImage(image, drawCanvasWidth,0);
+      // addImage();
+      drawCanvasWidth += image.width;
+      if (useBackIndex == 2 && drawCanvasWidth >= canvasWidth) {
+        removeCanvas();
+        backList.shift();
+        backList.push(createCanvas());
+        drawCanvasWidth = canvasWidth * 2;
+        imagePosition += canvasWidth
+        // addImage();
+      }
+
+      addImage();
+
+      if (drawCanvasWidth >= canvasWidth) {
+        console.log(drawCanvasWidth, useBackIndex)
+        if (useBackIndex < 2) {
+          useBackIndex += 1;
+        }
+        drawCanvasWidth = 0;
+        console.log(drawCanvasWidth, useBackIndex)
+      }
+    }
+  }
+
+
+
+
+
+
+//Aliases
+let Application = PIXI.Application,
+    Container = PIXI.Container,
+    loader = PIXI.loader,
+    Graphics = PIXI.Graphics,
+    Text = PIXI.Text,
+    TextStyle = PIXI.TextStyle,
+    // resources = PIXI.loader.resources,
+    TextureCache = PIXI.utils.TextureCache,
+    Sprite = PIXI.Sprite;
+
+//Create a Pixi Application
+let app = new Application({ 
+    width: 600,
+    height: 310,                       
+    antialiasing: true, 
+    transparent: false, 
+    autoResize:true,
+    resolution: 1,
+    backgroundColor: 0xFFFFFF,
+  }
+);
+
+//Add the canvas that Pixi automatically created for you to the HTML document
+document.body.appendChild(app.view);
+document.getElementById('firstCanvas').appendChild(app.view);
+
+let timeBarColor = 0xFF0000;
+let timePosition = 0;
+
+let imagePosition = 0;
+let imageDatas = [];
+
+let scaleMin = 0
+let scaleMax = 80
+let scaleInterval = 5
+let scaleTextInterval = 20
+
+
+let allAnimals = new Container();
+let imageAnimals = new Container();
+let timeBarAnimals = new Container();
+let rectAnimals = new Container();
+
+let fixedAnimals = new Container();
+let scaleAnimals = new Container();
+
+imageAnimals.x = 306;
+timeBarAnimals.x = 306;
+rectAnimals.x = 306;
+scaleAnimals.x = 306;
+// let imagBase64 = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAEsAAMDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDxzFFSYor0TO5Y2jHSirHliimSWPKPvRVr7RH6CigCt5B/vUVNmP0op6gV8mim4NFWBf8As/tRWj5ftRRcC59nb0orrjpsOaKjmKMv+1H/AL1Fc4bk5PNFIzuZu80VDuoq7FWItxopKKm4yt9pK8elFL9nl7wvRUXAvPp0RYlZOPdsmitddLkKgkc0Vpyom5r7z70U3c3pRWhIzzF/vCigeGbgjLXZz3oo1HdHV+Wf7xopCxJ4Y4orS5AzZJ/eSineavrRSGZRmOepoqvuoqAKP9oD+5+tFYiudvQCigC6loyoBvT8aKzN7epop3A//9k="
+allAnimals.addChildAt(imageAnimals, 0);
+allAnimals.addChildAt(timeBarAnimals, 1);
+allAnimals.addChildAt(rectAnimals, 2);
+fixedAnimals.addChildAt(scaleAnimals, 0);
+app.stage.addChildAt(allAnimals, 0);
+app.stage.addChildAt(fixedAnimals, 1);
+app.ticker.add(delta => gameLoop(delta));
+
+console.log('loader', loader)
+
+const b64toBlob = (b64Data, contentType='', sliceSize=512) => {
+  const byteCharacters = atob(b64Data);
+  const byteArrays = [];
+
+  for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+    const slice = byteCharacters.slice(offset, offset + sliceSize);
+
+    const byteNumbers = new Array(slice.length);
+    for (let i = 0; i < slice.length; i++) {
+      byteNumbers[i] = slice.charCodeAt(i);
+    }
+
+    const byteArray = new Uint8Array(byteNumbers);
+    byteArrays.push(byteArray);
+  }
+
+  const blob = new Blob(byteArrays, {type: contentType});
+  return blob;
+}
+
+function addImage() {
+  var canvasImage = getCanvasImage()
+
+  var texture = new PIXI.Texture.from(canvasImage);
+  texture.baseTexture.on('loaded', function() {
+    var image = new Sprite(texture);
+    image.x = imagePosition;
+    image.y = 10;
+    for (let i = 0; i < imageAnimals.children.length; i++) {
+      const item = imageAnimals.children[i];
+      item.destroy(true);
+      imageAnimals.removeChild(item);
+    }
+    imageAnimals.addChildAt(image, 0);
+  })
+}
+
+function addTimeBar(timeNum) {
+  var oneTimeBarWidth = 3
+  var timeBarWidth = timeNum * oneTimeBarWidth
+
+  //Rectangle
+  let timeBar = new Graphics(true);
+  for (let i = 1; i <= timeBarWidth; i++) {
+    if ((timePosition / oneTimeBarWidth) % 30 === 0) {
+      if (0xFF0000 === timeBarColor) {
+        timeBarColor = 0xA1A1A1
+      } else {
+        timeBarColor = 0xFF0000
+      }
+    }
+    timeBar.beginFill(timeBarColor);
+    timeBar.drawRect(timePosition, 0, timeBarWidth, 10);
+    timeBar.endFill();
+  }
+  timeBarAnimals.addChildAt(timeBar, 0);
+
+  timePosition += timeBarWidth
+}
+
+function addRect() {
+  //2. Styled text
+  let style = new TextStyle({
+    fontFamily: "Arial",
+    fontSize: 14,
+    fill: "red",
+  });
+  let message = new Text("1", style);
+
+  //Position it and add it to the stage
+  message.position.set(-5, 5);
+  rectAnimals.addChildAt(message, 0);
+  //Rectangle
+  let rectangle = new Graphics(true);
+  rectangle.lineStyle(1, 0xFF3300, 1);
+  rectangle.drawRect(0, 0, 10, 10);
+  rectangle.endFill();
+  rectangle.x = -5;
+  rectangle.y = 20;
+  rectAnimals.addChildAt(rectangle, 0);
+}
+
+function drawScaleHandle(scale, fromX, fromY, toX, toY) {
+  scale
+    .lineStyle(2, 0xFF0000, 1)
+    .moveTo(fromX, fromY)
+    .lineTo(toX, toY);
+}
+
+function drawScaleTextHandle(animals, scaleText, positionY) {
+  //2. Styled text
+  let scaleTextStyle = new TextStyle({
+    align : 'center',
+    lineHeight: 10,
+    fontFamily: "Arial",
+    fontSize: 16,
+    fill: 0xFF0000,
+  });
+  var message = new Text(scaleText, scaleTextStyle);
+  message.position.set(-30, positionY);
+  animals.addChildAt(message, 0);
+}
+
+function drawScale() {
+  let heightMax = 300;
+  let oneScaleIntervalPX = heightMax / scaleMax
+  let scaleIntervalPX = scaleInterval * oneScaleIntervalPX
+  let drawScaleNumber = scaleMax / scaleInterval
+
+  
+  //Rectangle
+  let scale = new Graphics(true);
+  scale.lineWidth = 2
+  
+  drawScaleHandle(scale, 0, 0, -10, 0)
+  drawScaleTextHandle(scaleAnimals, scaleMin, -3)
+
+  for (let i = 1; i < drawScaleNumber; i++) {
+    let drawScaleY = i * scaleIntervalPX
+    drawScaleHandle(scale, 0, drawScaleY, -10, drawScaleY)
+    if (i * scaleInterval % scaleTextInterval === 0) {
+      drawScaleTextHandle(scaleAnimals, i * scaleInterval, drawScaleY - 8.5)
+    }
+  }
+  drawScaleHandle(scale, 0, 300, -10, 300)
+  drawScaleTextHandle(scaleAnimals, scaleMax, 285)
+
+  scaleAnimals.addChildAt(scale, 0);
+}
+
+
+function gameLoop(delta){
+  allAnimals.x -= 0.05 * delta;
+}
+
+// addImage(imagBase64)
+// addTimeBar()
+drawScale()
+addRect()
+
+var socket = io.connect('http://192.168.1.136:3000/sub_bottom_scan/image/HF_IMAGE/file');
+
+socket.on('sendToClient', message => {
+
+});
+
+socket.on('showImage', (data_seq, data_stamp, message) => {
+  var timeNum = 1
+  addImage(message)
+  drawBack(message)
+  addTimeBar(timeNum)
+});
+
+</script>
+</body>
+
+

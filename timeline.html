@@ -1,0 +1,76 @@
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+        <title>测试strokeStyle</title>
+    </head>
+    <style type="text/css">
+        .canvas_container{
+            width: 800px;
+            height: 640px;
+            border: 1px solid #000;
+            padding: 10px;
+            overflow: hidden;
+            overflow-y: auto;
+            display: inline-block;
+        }
+        .canvas_item{
+            border: 1px solid #333;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+    </style>
+<body>
+<canvas id="my_canvas" class="canvas_container" width="800"></canvas>
+<input type="button" id='add_canvas' value="add canvas"/>&emsp;
+
+<script type="text/javascript">
+    var my_canvas = document.getElementById('my_canvas');
+    var canvas_context = my_canvas.getContext('2d');
+    var canvas_width = my_canvas.width;
+    var current_start = canvas_width;
+    var current_len = 0;
+    var one_second_width = 10;
+    var one_second_height = 10;
+
+    function color16(){//十六进制颜色随机
+        var r = Math.floor(Math.random()*256);
+        var g = Math.floor(Math.random()*256);
+        var b = Math.floor(Math.random()*256);
+        var color = '#'+r.toString(16)+g.toString(16)+b.toString(16);
+        return color;
+    }
+
+    function create_timeline(){
+        var nc = document.createElement("canvas");
+        nc.width = my_canvas.width;
+        nc.height = my_canvas.height;
+
+        if(current_len > 0){
+            var old_data = canvas_context.getImageData(current_start, one_second_height, current_len, one_second_height);
+            canvas_context.putImageData(old_data, current_start - one_second_width, one_second_height);
+        }
+        canvas_context.fillStyle = color16();
+        canvas_context.fillRect(canvas_width - one_second_width, 10, one_second_width, one_second_height);
+
+        current_start -= one_second_width;
+        current_len += one_second_width;
+    }
+</script>
+<script type="text/javascript">
+    function randomString(len) {
+        len = len || 32;
+        var $chars = 'ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678';    /****默认去掉了容易混淆的字符oOLl,9gq,Vv,Uu,I1****/
+        var maxPos = $chars.length;
+        var pwd = '';
+        for (i = 0; i < len; i++) {
+        　　pwd += $chars.charAt(Math.floor(Math.random() * maxPos));
+        }
+        return pwd;
+    }
+
+    document.getElementById('add_canvas').addEventListener('click', function(){
+        create_timeline();
+    })
+</script>
+</body>
+</html>

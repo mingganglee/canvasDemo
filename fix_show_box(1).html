@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>fix show box</title>
+	<style type="text/css">
+		.container{
+			height: 300px;
+			padding: 10px;
+			border: 1px solid #000;
+			background: #d9d9d9;
+			overflow: hidden;
+		}
+		.container_body div {
+			height: 300px;
+			display: inline-block;
+		}
+	</style>
+	<script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+	<script type="text/javascript">
+		$(function(){
+			var child_width = 3;
+			var container_width = 1000;
+			var total_width = 0;
+
+			function create_container(){
+				var dom = $("<div>");
+				dom.css('width', container_width + 'px');
+				dom.attr('class', 'container');
+
+				var child_dom = $("<div>");
+				child_dom.attr('class', 'container_body');
+				child_dom.css('width', '100%');
+				child_dom.css('height', '300px');
+				child_dom.css('position', 'relative');
+				child_dom.css('overflow', 'hidden');
+
+
+				var child_dom2 = $("<div>");
+				child_dom2.attr('class', 'container_body2');
+				child_dom2.css('height', '300px');
+				child_dom2.css('position', 'absolute');
+				child_dom2.css('left', container_width + 'px');
+
+				var child_dom3 = $("<canvas>");
+				child_dom3.attr('class', 'container_body3');
+				child_dom3.css('height', '300px');
+				child_dom3.css('width', container_width + 'px');
+				child_dom3.css('position', 'absolute');
+				// child_dom3.css('left', '0px');
+
+
+				child_dom.append(child_dom2)
+				child_dom.append(child_dom3)
+				dom.append(child_dom);
+				$("body").append(dom);
+			}
+
+			function create_child_dom(){
+				var colors = new Colors(1).rgbArray();
+				var dom = $("<div>");
+				dom.css('background', colors[0].hex);
+				dom.css('width', child_width + 'px');
+				return dom;
+			}
+
+			function append_child(){
+				var tmp_dom = create_child_dom();
+				$(".container_body2").append(tmp_dom);
+				total_width += child_width;
+			}
+
+			function move_child(){
+				var container = $(".container_body2");
+				var container_left = parseFloat(container.css('left').replace('px', ''))
+
+				if(container_left > 0){
+					console.log(container_left)
+					container.css('left', (container_left - 1) + 'px')
+				}else{
+					$("img:eq(0)", container).attr('src', '');
+					console.log($("img", container).length);
+				}
+				window.requestAnimationFrame(move_child);
+			}
+
+			create_container();
+			move_child();
+
+			var ws = new WebSocket("ws://192.168.1.153/sub_bottom_scan/image/LF_IMAGE");
+			ws.onopen = function (evt) {
+			    console.log("Connection open ...");
+			};
+			ws.onmessage = function (event) {
+		        var data = JSON.parse(event.data)
+		        if(data['data']['topic_title'] == 'LF_IMAGE/image'){
+		        	topic_value = JSON.parse(data['data']['topic_value'])
+
+		        	var dom = $("<img>");
+		        	dom.attr('src', topic_value['data'])
+		        	$(".container_body2").append(dom);
+		        	total_width += child_width;
+		        	// move_child();
+		        	
+		        }
+			};
+
+		})
+	</script>
+</head>
+<body>
+</body>
+</html>

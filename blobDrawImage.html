@@ -1,0 +1,118 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<title>测试strokeStyle</title>
+<script src="pako.js"></script>
+</head>
+<body>
+    <input type='file' accept='image' capture='camera' id='input'>
+    <canvas id = 'canvas'></canvas>
+<script>
+var canvas = document.getElementById('canvas');
+var input = document.getElementById('input');
+var ctx = canvas.getContext('2d');
+
+function picToBlob() {
+    console.log(input.files[0])
+    canvas.renderImage(input.files[0]);
+}
+
+HTMLCanvasElement.prototype.renderImage = function(blob){
+
+  console.log(blob.arrayBuffer())
+  
+  var ctx = this.getContext('2d');
+  var img = new Image();
+
+  img.onload = function(){
+    ctx.drawImage(img, 0, 0)
+  }
+
+  img.src = URL.createObjectURL(blob);
+
+  console.log(canvas.toDataURL(blob.type))
+};
+
+input.addEventListener('change', picToBlob, false);
+
+
+
+const compress = function (data, type) {
+  switch (type) {
+      case "gizp":
+          return pako.gzip(data);
+      case "deflate":
+          return pako.deflate(data);
+      case "deflateRaw":
+          return pako.deflateRaw(data);
+      default:
+          return data;
+  }
+}
+
+
+const decompress = async function (data, type) {
+    if (data instanceof Blob) {
+        data = await new Promise(resolve => {
+            const reader = new FileReader();
+            //byte为blob对象
+            reader.readAsArrayBuffer(data);
+            reader.onload = (e) => {
+                resolve(reader.result);
+            }
+        });
+    }
+    switch (type) {
+        case "gizp":
+            return pako.ungzip(data, { to: "ArrayBuffer" });
+        // case "deflate":
+        //     return pako.inflate(data, { to: "string" });
+        // case "deflateRaw":
+        //     return pako.inflateRaw(data, { to: "string" });
+        default:
+            return data;
+    }
+}
+
+
+var imgUrl = 'flowers.jpg.gz'
+var oReq = new XMLHttpRequest();
+
+oReq.open("GET", imgUrl, true);
+
+oReq.responseType = "blob";
+
+
+
+oReq.onreadystatechange = function () {
+  if (oReq.readyState == oReq.DONE) {
+    var blob = oReq.response;
+    console.log('blob', blob)
+    
+    console.log(pako);
+    var ugz = decompress(blob, 'gzip')
+    // console.log(ugz)
+    // ctx.drawImage(ugz, 0, 0)
+    
+
+    var image = new Image(); 
+    image.addEventListener("load", function (evt) {
+        URL.revokeObjectURL(evt.target.src);
+
+        document.body.appendChild(image);
+    });
+    // image.src = URL.createObjectURL(blob);      
+    
+    ugz.then(val => {
+      console.log('val1', val)
+      var newB = new Blob([new ArrayBuffer(val)], {type: 'image/png'})
+      image.src = URL.createObjectURL(blob);
+      console.log(image.src)
+    })
+  }
+}
+
+oReq.send();
+</script>
+</body>
+</html>

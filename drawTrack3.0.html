@@ -1,0 +1,64 @@
+<html>
+  <head>
+    <script src="https://code.createjs.com/1.0.0/createjs.min.js"></script>
+    <script>
+      var rightMove = 0;
+      var shape;
+      var bitmap;
+      var container = new createjs.Container();
+      function init() {
+        var stage = new createjs.Stage("demoCanvas");
+        shape = new createjs.Shape();
+        shape.x = 300;
+        shape.y = 0;
+
+        shape.graphics.beginFill("red").drawRect(0, 0, 30, 10);
+        shape.graphics.beginFill("grey").drawRect(30, 0, 30, 10);
+        shape.graphics.beginFill("red").drawRect(60, 0, 30, 10);
+        shape.graphics.beginFill("grey").drawRect(90, 0, 30, 10);
+
+        // shape.graphics.setStrokeDash();
+		    shape.graphics.beginFill("").setStrokeStyle(1).beginStroke("red").rect(-5,20,10,10);
+
+        stage.addChildAt(shape, 0);
+        stage.addChildAt(container, 0)
+
+        var image = new Image();
+        image.src = "flowers.jpg"
+        image.onload = function (event) {
+          bitmap = new createjs.Bitmap(image);
+          bitmap.x = 300;
+          bitmap.y = 25;
+          container.addChildAt(bitmap, 0);
+          bitmap = new createjs.Bitmap(image);
+          bitmap.x = 300;
+          bitmap.y = 45;
+          container.addChildAt(bitmap, 0);
+        }
+        
+
+        createjs.Ticker.setFPS(60);
+        createjs.Ticker.addEventListener("tick", stage);
+      }
+      
+      var timer = setInterval(() => {
+        rightMove += 4;
+        if (rightMove > 300) {
+          clearInterval(timer)
+          rightMove = 300
+        }
+        createjs.Tween.get(shape)
+          .to({x: 300 - rightMove}, 1000)
+        createjs.Tween.get(container)
+          .to({x: -rightMove}, 1000)
+      }, 1000);
+
+      setTimeout(() => {
+        shape.graphics.beginFill("").setStrokeStyle(1).beginStroke("red").rect(15,20,10,10);
+      }, 1000);
+    </script>
+  </head>
+  <body onload="init();">
+    <canvas id="demoCanvas" width="1000" height="1000"></canvas>
+  </body>
+</html>

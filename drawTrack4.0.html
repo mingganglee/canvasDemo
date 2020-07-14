@@ -1,0 +1,186 @@
+<html>
+  <head>
+    <script src="https://code.createjs.com/1.0.0/createjs.min.js"></script>
+    <script src="js/socket.io.js"></script>
+    <script>
+
+      var timeSum = 0;
+      var stage;
+      var rightMove = 0;
+      var shape;
+      var bitmap;
+      var bitmapList = [];
+      var imageDatas = [];
+      var timePosition = 0;
+      var container = new createjs.Container();
+      var imagePosition = 0;
+
+      
+
+      
+
+
+      function init() {
+        stage = new createjs.Stage("demoCanvas");
+        shape = new createjs.Shape();
+        // stage.autoClear = false;
+        shape.x = 300;
+        shape.y = 0;
+
+        // stage.addChildAt(shape, 0);
+        container.addChildAt(shape, 0);
+        stage.addChildAt(container, 0);
+
+        createjs.Ticker.setFPS(10);
+        createjs.Ticker.addEventListener("tick", stage);
+        
+
+
+        function addTimeBar(timeNum) {
+          // console.log(timeNum)
+          var oneTimeBarWidth = 3
+          var timeBarWidth = timeNum * oneTimeBarWidth
+          shape.graphics.beginFill("red").drawRect(timePosition, 0, timeBarWidth, 10);
+          container.addChildAt(shape, 1);
+          // stage.update()
+          timePosition += timeBarWidth
+        }
+        function addRect() {
+          shape.graphics.beginFill("").setStrokeStyle(1).beginStroke("red").rect(-5,20,10,10);
+        }
+        function addImage() {
+          var image = new Image();
+          image.src = getCanvasImage()
+          image.onload = function (event) {
+            container.removeChildAt(0);
+            var bitmap = new createjs.Bitmap(image);
+            bitmap.x = 300 + imagePosition;
+            bitmap.y = 20;
+            container.addChildAt(bitmap, 0);
+            // bitmapList.push(bitmap)
+            // bitmapX += image.width;
+          }
+        }
+
+
+
+
+        let useBackIndex = 0
+        let canvasWidth = 306;
+        let canvasHeight = 300;
+        let drawCanvasWidth = 0;
+        let oneImageWidth = 3;
+        let backList = [createCanvas(), createCanvas(), createCanvas()]
+        
+        function createCanvas() {
+          var canvas = document.createElement("canvas");
+          canvas.width = canvasWidth;
+          canvas.height = canvasHeight;
+          document.getElementById('twoCanvas').appendChild(canvas);
+          return canvas.getContext('2d');
+        }
+
+        function removeCanvas() {
+          let container = document.getElementById('twoCanvas');
+          container.removeChild(container.children[0]);
+        }
+
+        function getCanvasImage() {
+          let container = document.getElementById('twoCanvas');
+          container = container.children;
+
+          var canvas = document.createElement("canvas");
+          canvas.width = canvasWidth * 3;
+          canvas.height = canvasHeight;
+          canvas.getContext('2d').drawImage(container[0], 0, 0);
+          canvas.getContext('2d').drawImage(container[1], canvasWidth, 0);
+          canvas.getContext('2d').drawImage(container[2], canvasWidth * 2, 0);
+          return canvas.toDataURL()
+        }
+
+        
+
+        function drawBack(imageArray) {
+          let imageBlob = new Blob([imageArray], {type: 'image/jpeg'});
+          let imageUrl = URL.createObjectURL(imageBlob)
+          let image = new Image()
+          image.src = imageUrl
+          
+          image.onload = function() {
+            console.log(image.width)
+            let item = backList[useBackIndex]
+
+            item.drawImage(image, drawCanvasWidth,0);
+            // addImage();
+            drawCanvasWidth += image.width;
+            if (useBackIndex == 2 && drawCanvasWidth >= canvasWidth) {
+              removeCanvas();
+              backList.shift();
+              backList.push(createCanvas());
+              drawCanvasWidth = canvasWidth * 2;
+              imagePosition += canvasWidth
+              // addImage();
+            }
+
+            addImage();
+
+            if (drawCanvasWidth >= canvasWidth) {
+              console.log(drawCanvasWidth, useBackIndex)
+              if (useBackIndex < 2) {
+                useBackIndex += 1;
+              }
+              drawCanvasWidth = 0;
+              console.log(drawCanvasWidth, useBackIndex)
+            }
+          }
+        }
+
+
+
+
+        var socket = io.connect('http://192.168.1.136:3000/sub_bottom_scan/image/HF_IMAGE/file');
+
+        socket.on('sendToClient', message => {
+
+        });
+
+        socket.on('showImage', (data_seq, data_stamp, message) => {
+
+         
+          var timeNum = 1
+          // addImage(message)
+          drawBack(message)
+          addTimeBar(timeNum)
+
+          timeSum += timeNum
+          createjs.Tween.get(container)
+          .to({x: -timeSum * 3}, 1000)
+        });
+      }
+
+      
+
+
+
+
+      // var timer = setInterval(() => {
+      //   rightMove += 4;
+      //   if (rightMove > 300) {
+      //     clearInterval(timer)
+      //     rightMove = 300
+      //   }
+      //   createjs.Tween.get(container)
+      //     .to({x: -rightMove}, 1000)
+        
+      // }, 1000);
+
+      setTimeout(() => {
+        shape.graphics.beginFill("").setStrokeStyle(1).beginStroke("red").rect(15,20,10,10);
+      }, 1000);
+    </script>
+  </head>
+  <body onload="init();">
+    <canvas id="demoCanvas" width="1000" height="1000"></canvas>
+    <div id="twoCanvas" style="display: none;"></div>
+  </body>
+</html>

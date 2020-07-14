@@ -1,0 +1,353 @@
+<html>
+  <head>
+    <script src="https://code.createjs.com/1.0.0/createjs.min.js"></script>
+    <script src="js/socket.io.js"></script>
+
+    <link href="https://unpkg.com/video.js/dist/video-js.css" rel="stylesheet">
+    <script src="https://unpkg.com/video.js/dist/video.js"></script>
+    <script src="https://unpkg.com/videojs-contrib-hls/dist/videojs-contrib-hls.js"></script>
+    <script>
+
+      class drawBottomScan {
+        constructor(containerID) {
+          this.initParams(containerID)
+        }
+
+        initParams(containerID) {
+          this.stage = new createjs.Stage(containerID);
+          // create container
+          this.allContainer = new createjs.Container();
+          this.moveContainer = new createjs.Container();
+          this.moveContainer.x = 800;
+          // this.otherContainer = new createjs.Container();
+          this.timeBarContainer = new createjs.Container();
+          this.fishMarkContainer = new createjs.Container();
+          this.imageContainer = new createjs.Container();
+          this.imageContainer.y = this.timeBarHeight;
+          this.fixedContainer = new createjs.Container();
+          this.scaleContainer = new createjs.Container();
+          this.scaleContainer.y = this.timeBarHeight;
+          // merge container
+          this.moveContainer.addChildAt(this.imageContainer, 0);
+          // this.moveContainer.addChildAt(this.otherContainer, 1);
+          this.moveContainer.addChildAt(this.timeBarContainer, 1);
+          this.moveContainer.addChildAt(this.fishMarkContainer, 2);
+          this.fixedContainer.addChildAt(this.scaleContainer, 0)
+          this.allContainer.addChildAt(this.moveContainer, 0);
+          this.allContainer.addChildAt(this.fixedContainer, 1);
+
+          this.stage.addChild(this.allContainer);
+          createjs.Ticker.setFPS(5);
+          createjs.Ticker.addEventListener("tick", this.stage);
+
+          // timer bar params
+          this.timeBarPosition = 0;
+          this.timeBarHeight = 10;
+          this.oneSecTimeBarWidth = 3;
+          this.oneTimeBarMaxSec = 30;
+          this.timeBarColor = '#FF0000'
+          this.firstTimestamp = null;
+          this.oldTimestamp = null;
+          
+
+          // image params
+          this.imagePosition = 0;
+
+          // scale params
+          this.scaleMin = 0;
+          this.scaleMax = 80;
+          this.initScale();
+
+          // fish mark params
+          this.fishMarkWidth = 10;
+          this.fishMarkHeight = 10;
+
+          // merge canvas image params
+          this.parentID = 'catchContainer';
+          this.useBackIndex = 0;
+          this.canvasWidth = 800;
+          this.canvasHeight = 300;
+          this.drawCanvasWidth = 0;
+          this.oneImageWidth = 3;
+          this.backList = [this.createCanvas(), this.createCanvas(), this.createCanvas()];
+        }
+
+        initScale() {
+          this.scaleInterval = 5
+          this.scaleTextInterval = 20
+          this.heightMax = 300;
+          this.oneScaleIntervalPX = this.heightMax / this.scaleMax
+          this.scaleIntervalPX = this.scaleInterval * this.oneScaleIntervalPX
+          this.drawScaleNumber = this.scaleMax / this.scaleInterval
+        }
+
+        createTimeBar(sec) {
+          if (this.timeBarContainer.children.length * this.oneSecTimeBarWidth > 900) {
+            this.timeBarContainer.removeChildAt(0)
+          }
+
+          let timeBarShape = new createjs.Shape();
+          for (let i = 0; i < sec; i++) {
+            timeBarShape.graphics
+              .beginFill(this.timeBarColor)
+              .drawRect(this.timeBarPosition, 0, this.oneSecTimeBarWidth + 1, 10);
+            this.timeBarContainer.addChild(timeBarShape);
+            this.timeBarPosition += this.oneSecTimeBarWidth;
+
+            if ((this.timeBarPosition / this.oneSecTimeBarWidth) % this.oneTimeBarMaxSec === 0) {
+              if ('#FF0000' === this.timeBarColor) {
+                this.timeBarColor = '#A1A1A1'
+              } else {
+                this.timeBarColor = '#FF0000'
+              }
+            }
+          }
+        }
+
+        createFishMark(sec, depth, text) {
+          console.log(this.fishMarkContainer.children.length)
+          if (this.fishMarkContainer.children.length > 100) {
+            this.fishMarkContainer.removeChildAt(0)
+          }
+          let fishMarkX = (sec * this.oneSecTimeBarWidth) - (this.fishMarkWidth / 2)
+          let fishMarkY = (depth * this.oneScaleIntervalPX) - (this.fishMarkHeight / 2)
+          let _fishMarkContainer = new createjs.Container()
+          let fishMarkShape = new createjs.Shape();
+          fishMarkShape. y = this.timeBarHeight;
+          fishMarkShape.graphics
+            .beginFill("")
+            .setStrokeStyle(1)
+            .beginStroke("red")
+            .rect(fishMarkX, fishMarkY, this.fishMarkWidth, this.fishMarkHeight);
+          _fishMarkContainer.addChild(fishMarkShape);
+
+          let fishMarkText = new createjs.Text(text, "16px Arial", "#FF0000");
+          fishMarkText.x = fishMarkX;
+          if (depth < 5) {
+            fishMarkText.y = fishMarkY + 23;
+          } else {
+            fishMarkText.y = fishMarkY - 5;
+          }
+          _fishMarkContainer.addChild(fishMarkText);
+          this.fishMarkContainer.addChild(_fishMarkContainer);
+        }
+
+        createImage() {
+          var image = new Image();
+          image.src = this.getCanvasImage(); // TODO: not get image src
+          image.onload = function (event) {
+            this.imageContainer.removeAllChildren();
+            var bitmap = new createjs.Bitmap(image);
+            bitmap.x = this.imagePosition;
+            bitmap.y = this.timeBarHeight;
+            this.imageContainer.addChildAt(bitmap, 0);
+            this.stage.update();
+          }.bind(this);
+        }
+
+        scaleHandle(scale, fromX, fromY, toX, toY) {
+          scale.graphics
+            .setStrokeStyle(2)
+            .beginStroke("#FF0000")
+            .moveTo(fromX, fromY)
+            .lineTo(toX, toY);
+        }
+        scaleTextHandle(scaleText, positionY) {
+          var fishMarkText = new createjs.Text(scaleText, "16px Arial", "#FF0000");
+          fishMarkText.x = 800 - 30;
+          fishMarkText.y = positionY + this.timeBarHeight;
+          this.scaleContainer.addChild(fishMarkText);
+        }
+
+        createScale() {
+          this.scaleContainer.removeAllChildren()
+          let scaleShape = new createjs.Shape();
+          scaleShape.x = 800;
+          scaleShape.y = this.timeBarHeight;
+          
+          this.scaleHandle(scaleShape, 0, 1, -10, 1)
+          this.scaleTextHandle(this.scaleMin, 0)
+
+          for (let i = 1; i < this.drawScaleNumber; i++) {
+            let drawScaleY = i * this.scaleIntervalPX
+            let nowScaleText = i * this.scaleInterval
+            this.scaleHandle(scaleShape, 0, drawScaleY, -10, drawScaleY)
+            
+            if (nowScaleText % this.scaleTextInterval === 0) {
+              this.scaleTextHandle(nowScaleText, drawScaleY - 6.5)
+            }
+          }
+          this.scaleHandle(scaleShape, 0, 299, -10, 299)
+          this.scaleTextHandle(this.scaleMax, 288)
+
+          this.scaleContainer.addChildAt(scaleShape, 0);
+        }
+
+        createCanvas() {
+          let parentElement = document.getElementById(this.parentID);
+          if (parentElement === null) {
+            var crDiv = document.createElement('div');
+            crDiv.id = this.parentID;
+            crDiv.style.display = 'none';
+            document.body.appendChild(crDiv);
+          }
+          var canvas = document.createElement('canvas');
+          canvas.width = this.canvasWidth;
+          canvas.height = this.canvasHeight;
+          document.getElementById(this.parentID).appendChild(canvas);
+          return canvas.getContext('2d');
+        }
+
+        removeCanvas() {
+          let container = document.getElementById(this.parentID);
+          container.removeChild(container.children[0]);
+        }
+
+        getCanvasImage() {
+          let container = document.getElementById(this.parentID);
+          container = container.children;
+
+          var canvas = document.createElement('canvas');
+          canvas.width = this.canvasWidth * 3;
+          canvas.height = this.canvasHeight;
+          canvas.getContext('2d').drawImage(container[0], 0, 0);
+          canvas.getContext('2d').drawImage(container[1], this.canvasWidth, 0);
+          canvas.getContext('2d').drawImage(container[2], this.canvasWidth * 2, 0);
+
+          let imageUrl = canvas.toDataURL();
+          canvas = null;
+          return imageUrl;
+        }
+
+        
+
+        drawBack(imageArray) {
+          let imageBlob = new Blob([imageArray], {type: 'image/jpeg'});
+          let imageUrl = URL.createObjectURL(imageBlob)
+          let image = new Image()
+          image.src = imageUrl
+          
+          image.onload = function() {
+            let item = this.backList[this.useBackIndex]
+
+            item.drawImage(image, this.drawCanvasWidth,0);
+            this.drawCanvasWidth += 3; // image.width;
+            if (this.useBackIndex == 2 && this.drawCanvasWidth >= this.canvasWidth) {
+              this.removeCanvas();
+              this.backList.shift();
+              this.backList.push(this.createCanvas());
+              this.drawCanvasWidth = this.canvasWidth * 2;
+              this.imagePosition += this.canvasWidth
+            }
+
+            this.createImage();
+
+            if (this.drawCanvasWidth >= this.canvasWidth) {
+              if (this.useBackIndex < 2) {
+                this.useBackIndex += 1;
+              }
+              this.drawCanvasWidth = 0;
+            }
+          }.bind(this);
+        }
+      }
+
+
+      function init() {
+        let timeSum = 0;
+        let dbs = new drawBottomScan('demoCanvas');
+
+        dbs.createFishMark(0, 0, '1')
+        dbs.createFishMark(5, 2, '1')
+        dbs.createFishMark(10, 4, '1')
+        dbs.createFishMark(15, 6, '1')
+
+
+        var socket = io.connect('http://192.168.1.136:3000/sub_bottom_scan/image/HF_IMAGE');
+        socketFile = io.connect('http://192.168.1.136:3000/sub_bottom_scan/image/HF_IMAGE/file');
+        socket.on('sendToClient', message => {
+          const jsonObj = JSON.parse(message)
+          var title = jsonObj.data.topic_title;
+          var value = jsonObj.data.topic_value;
+
+          if (title.indexOf('/fish_info') > 0) {
+            var fish_info = JSON.parse(value);
+
+            let sec = fish_info.time - dbs.firstTimestamp;
+            let depth = fish_info.depth;
+            let text = fish_info.mode;
+            dbs.createFishMark(sec, depth, text);
+
+          }
+
+          if (title.indexOf('/depth_range') > 0) {
+            var depthRange = JSON.parse(value);
+            dbs.scaleMin = depthRange.min;
+            dbs.scaleMax = depthRange.max;
+            dbs.initScale();
+            dbs.createScale();
+          }
+        });
+
+        socketFile.on('showImage', (data_seq, data_stamp, message) => {
+          var timeNum = 1;
+          if (dbs.oldTimestamp !== null) {
+            var timeNum = Math.round(data_stamp - dbs.oldTimestamp);
+          }
+
+          dbs.oldTimestamp = data_stamp;
+          if (dbs.firstTimestamp === null) {
+            dbs.firstTimestamp = data_stamp;
+          }
+
+
+          // dbs.drawBack(message);
+          dbs.createTimeBar(timeNum);
+          timeSum += timeNum;
+          createjs.Tween.get(dbs.moveContainer)
+          .to({x: 800 - timeSum * 3}, 1000);
+        });
+
+        window.myLog = '';
+
+        window.totalMemLog = '';
+        window.usedMemLog = '';
+        window.sizeLimitMemLog = '';
+        // setInterval(()=>{
+        //   let mem = performance.memory;
+
+        //   window.totalMemLog += mem.totalJSHeapSize + ',';
+        //   window.usedMemLog += mem.usedJSHeapSize + ',';
+        //   window.sizeLimitMemLog += mem.jsHeapSizeLimit + ',';
+
+        //   // var data = new Object();
+        //   // data.totalJSHeapSize = mem.totalJSHeapSize;
+        //   // data.usedJSHeapSize =  mem.usedJSHeapSize;
+        //   // data.jsHeapSizeLimit = mem.jsHeapSizeLimit;
+
+        //   // var jsonData = JSON.stringify(data);
+        //   // window.myLog += jsonData;
+        //   // window.myLog += '|';
+        // },2000)
+      }
+    </script>
+  </head>
+  <body onload="init();">
+    <div style="position: absolute;">
+      <video id="my_video_1" style="position: absolute;" class="video-js vjs-default-skin" muted autoplay="autoplay" width="800" height="300" 
+          data-setup='{}'>
+          <source src="http://192.168.1.153/hls/playlist.m3u8" type="application/x-mpegURL">
+      </video>
+      <canvas id="demoCanvas" width="800" height="310"style="position: absolute;"></canvas>
+    </div>
+
+
+    <div id="twoCanvas" style="display: none;"></div>
+  </body>
+
+  <style>
+    #my_video_1 {
+      top: 10px;
+    }
+  </style>
+</html>
